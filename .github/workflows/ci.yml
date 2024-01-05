@@ -1,0 +1,97 @@
+name: build
+# This workflow is  triggered on pushes, pull requests to the repository.
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+env:
+  version_in_development: v4.4.1
+
+jobs:
+  draft-release:
+    name: Draft Release if develop branch
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.draft_release.outputs.upload_url }}  
+      release_id: ${{ steps.draft_release.outputs.id }}  
+    steps:
+      - name: Create Release
+        id: draft_release
+        if: github.ref == 'refs/heads/develop' || github.head_ref == 'refs/heads/main'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          owner: tipi-build 
+          repo: make-package
+          commitish: main
+          tag_name: ${{ env.version_in_development }}
+          release_name: ${{ env.version_in_development }} ${{ github.sha }}
+          draft: true
+          prerelease: true 
+
+  build-macos:
+    name: build-macos
+    runs-on: macos-latest
+    needs: draft-release
+    steps:
+      - uses: actions/checkout@v2
+      - name: install and build 
+        run: |
+          wget https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz
+          tar -xvf make-4.4.1.tar.gz
+          cd make-4.4.1
+          ./configure
+          make
+          chmod +x ./make
+          zip -j ../make-macos.zip ./make
+      - uses: actions/upload-artifact@v3
+        with:
+          name: macos_artifact
+          path: ./make-macos.zip.zip
+      - name: Upload package
+        if: ${{needs.draft-release.outputs.upload_url}}
+        id: upload-tipi-make-package 
+        uses: actions/upload-release-asset@v1
+        env:
+           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{needs.draft-release.outputs.upload_url}}
+          asset_path: ./make-macos.zip
+          asset_name: make-macos.zip
+          asset_content_type: application/zip
+
+  build-linux:
+    name: build-linux
+    runs-on: ubuntu-latest
+    container: 
+      image: tipibuild/tipi-ubuntu-1604
+    needs: draft-release
+    steps:
+      - uses: actions/checkout@v2
+      - name: install and build 
+        run: |
+          wget https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz
+          tar -xvf make-4.4.1.tar.gz
+          cd make-4.4.1
+          ./configure
+          make
+          chmod +x ./make
+          zip -j ../make-linux.zip ./make
+      - uses: actions/upload-artifact@v3
+        with:
+          name: linux_artifact
+          path: ./make-linux.zip
+      - name: Upload package
+        if: ${{needs.draft-release.outputs.upload_url}}
+        id: upload-tipi-make-package 
+        uses: actions/upload-release-asset@v1
+        env:
+           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{needs.draft-release.outputs.upload_url}}
+          asset_path: ./make-linux.zip
+          asset_name: make-linux.zip
+          asset_content_type: application/zip
