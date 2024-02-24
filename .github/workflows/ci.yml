@@ -7,7 +7,7 @@ on:
       - develop
   pull_request:
 env:
-  version_in_development: v4.4.1
+  version_in_development: v4.4.1-2
 
 jobs:
   draft-release:
@@ -43,8 +43,8 @@ jobs:
           wget https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz
           tar -xvf make-4.4.1.tar.gz
           cd make-4.4.1
-          ./configure
-          make
+          ./configure --disable-nls
+          make 
           chmod +x ./make
           zip -j ../make-macos.zip ./make
       - uses: actions/upload-artifact@v3
@@ -77,7 +77,7 @@ jobs:
           wget https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz
           tar -xvf make-4.4.1.tar.gz
           cd make-4.4.1
-          ./configure
+          ./configure --disable-nls
           make
           chmod +x ./make
           zip -j ../make-linux.zip ./make
